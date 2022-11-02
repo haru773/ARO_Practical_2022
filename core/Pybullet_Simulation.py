@@ -113,8 +113,12 @@ class Simulation(Simulation_base):
         #TODO modify from here
         # Hint: return two numpy arrays, a 3x1 array for the position vector,
         # and a 3x3 array for the rotation matrix
-        #return pos, rotmat
-        pass
+
+        # !not sure whether the current position can directly use from frametranslationfromparent
+        pos = self.getTransformationMatrices()[jointName].dot(self.frameTranslationFromParent[jointName])
+        rotmat = self.getJointRotationalMatrix(jointName,self.getJointPos(jointName))
+
+        return pos,rotmat
 
     def getJointPosition(self, jointName):
         """Get the position of a joint in the world frame, leave this unchanged please."""
@@ -166,8 +170,20 @@ class Simulation(Simulation_base):
         # TODO add your code here
         # Hint: return a numpy array which includes the reference angular
         # positions for all joints after performing inverse kinematics.
-        
-        pass
+
+        # this return a dictionary 
+        curr_q = self.getJointPosition(endEffector)
+        start_eff_pos=self.getJointPosition(endEffector)
+        traj = np.array(curr_q)
+        for i in interpolationSteps:
+            curr_target = (i/interpolationSteps)*(targetPosition-start_eff_pos)
+            dy = curr_target-curr_q
+            jacobian = self.jacobianMatrix(endEffector)
+            dTheta = jacobian.dot(dy)
+            curr_q=curr_q+dTheta
+            traj.append(curr_q)
+        return traj
+
 
     def move_without_PD(self, endEffector, targetPosition, speed=0.01, orientation=None,
         threshold=1e-3, maxIter=3000, debug=False, verbose=False):
@@ -181,7 +197,11 @@ class Simulation(Simulation_base):
         # iterate through joints and update joint states based on IK solver
 
         #return pltTime, pltDistance
-        pass
+        traj = self.inverseKinematics(endEffector,targetPosition,orientation,interpolationSteps=maxIter*speed,maxIterPerStep=maxIter,threshold=threshold)
+        # Simulation.p.resetJointState(
+        #         self.robot, self.j   ointIds[endEffector], self.jointPoses[endEffector])
+        return np.arange(0,maxIter*speed,speed),traj
+
 
     def tick_without_PD(self):
         """Ticks one step of simulation without PD control. """
