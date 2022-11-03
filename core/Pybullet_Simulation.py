@@ -1,3 +1,4 @@
+from ntpath import join
 from scipy.spatial.transform import Rotation as npRotation
 from scipy.special import comb
 from scipy.interpolate import CubicSpline
@@ -46,8 +47,8 @@ class Simulation(Simulation_base):
         'RARM_JOINT3': np.array([1, 0, 0]),
         'RARM_JOINT4': np.array([0, 1, 0]),
         'RARM_JOINT5': np.array([0, 0, 1]),
-        'RHAND'      : np.array([0, 0, 0]),
-        'LHAND'      : np.array([0, 0, 0])
+        # 'RHAND'      : np.array([0, 0, 0]),
+        # 'LHAND'      : np.array([0, 0, 0])
     }
 
     frameTranslationFromParent = {
@@ -69,14 +70,16 @@ class Simulation(Simulation_base):
         'RARM_JOINT3': np.array([0.1805, 0, -0.03]),
         'RARM_JOINT4': np.array([0.1495, 0, 0]),
         'RARM_JOINT5': np.array([0, 0, -0.1335]),
-        'RHAND'      : np.array([0, 0, 0]), # optional
-        'LHAND'      : np.array([0, 0, 0]) # optional
+        # 'RHAND'      : np.array([0, 0, 0]), # optional
+        # 'LHAND'      : np.array([0, 0, 0]) # optional
     }
+    jointsName = list(frameTranslationFromParent.keys())
+
 
     def getJointRotationalMatrix(self, jointName=None, theta=None):
         """
             Returns the 3x3 rotation matrix for a joint from the axis-angle representation,
-            where the axis is given by the revolution axis of the joint and the angle is theta.
+            where the axis is given by the revolution axis of the joint and the angle is theta. ─
         """
         if jointName == None:
             raise Exception("[getJointRotationalMatrix] \
@@ -84,6 +87,8 @@ class Simulation(Simulation_base):
         # TODO modify from here
         # Hint: the output should be a 3x3 rotational matrix as a numpy array
         #return np.matrix()
+        if not theta :
+            theta = self.getJointPos(jointName)
         Rx= np.matrix([[1,0,0],[0,math.cos(theta),-math.sin(theta)],[0,math.sin(theta),math.cos(theta)]])
         Ry=np.matrix([[math.cos(theta),0,math.sin(theta)],[0,1,0],[-math.sin(theta),0,math.cos(theta)]])
         Rz=np.matrix([[math.cos(theta),-math.sin(theta),0],[math.sin(theta),math.cos(theta),0],[0,0,1]])
@@ -101,24 +106,27 @@ class Simulation(Simulation_base):
         # their corresponding homogeneous transformation matrices as values.
         for joint in self.frameTranslationFromParent:
             # forming transformation matrix by composing rotational matrix and translation matrix and a addition row
-            transformationMatrices[joint]=np.r_[np.c_[self.getJointRotationalMatrix(joint,self.getJointPos(joint)),self.frameTranslationFromParent[joint]],[0,0,0,1]]
+            p_array = [[value] for value in self.frameTranslationFromParent[joint]]
+            arr = np.append(self.getJointRotationalMatrix(joint,self.getJointPos(joint)),p_array,axis=1)
+            transformationMatrices[joint]=np.append(arr,[[0,0,0,1]],axis=0)
         return transformationMatrices
 
     def getJointLocationAndOrientation(self, jointName):
         """
-            Returns the position and rotation matrix of a given joint using Forward Kinematics
+            Returns the position and rotation matrix odotf a given joint using Forward Kinematics
             according to the topology of the Nextage robot.
         """
         # Remember to multiply the transformation matrices following the kinematic chain for each arm.
         #TODO modify from here
         # Hint: return two numpy arrays, a 3x1 array for the position vector,
         # and a 3x3 array for the rotation matrix
-
-        # !not sure whether the current position can directly use from frametranslationfromparent
-        pos = self.getTransformationMatrices()[jointName].dot(self.frameTranslationFromParent[jointName])
-        rotmat = self.getJointRotationalMatrix(jointName,self.getJointPos(jointName))
-
-        return pos,rotmat
+        
+        transMatrix = self.getTransformationMatrices()['base_to_dummy']
+        for i in range(1,17):
+            transMatrix = transMatrix* self.getTransformationMatrices()[list(self.frameTranslationFromParent.keys())[i]]
+            if list(self.frameTranslationFromParent.keys())[i]==jointName:
+                return transMatrix[0:3:,3].T,transMatrix[0:3,0:3]
+        return transMatrix[0:3:,3].T,transMatrix[0:3,0:3]
 
     def getJointPosition(self, jointName):
         """Get the position of a joint in the world frame, leave this unchanged please."""
@@ -144,46 +152,29 @@ class Simulation(Simulation_base):
         # a 3xn or a 6xn Jacobian matrix, where 'n' is the number of joints in
         # your kinematic chain.
         #return np.array()
-        jacobianMatrix = np.array()
-        for joint in self.jointRotationAxis:
+        jacobianMatrix = np.array([])
+        for joint in self.jointRotationAxis.keys():
             # compute [a_n x (p_eff-p_n)] of each joint
-            np.append(jacobianMatrix,self.jacobianMatrix[joint].dot(self.getJointPos(endEffector)-self.frameTranslationFromParent[joint]))
-        return jacobianMatrix
+            jacobianMatrix = np.append(jacobianMatrix,np.array(np.cross(self.jointRotationAxis[joint],(self.getJointPosition(endEffector)-self.frameTranslationFromParent[joint]))).T)
+        # print(jacobianMatrix)
+        jacobianMatrix = jacobianMatrix.reshape((17,3))
+        return jacobianMatrix.T
 
     
 
     # Task 1.2 Inverse Kinematics
 
-    def inverseKinematics(self, endEffector, targetPosition, orientation, interpolationSteps, maxIterPerStep, threshold):
-        """Your IK solver \\
-        Arguments: \\
-            endEffector: the jointName the end-effector \\
-            targetPosition: final destination the the end-effector \\
-            orientation: the desired orientation of the end-effector
-                         together with its parent link \\
-            interpolationSteps: number of interpolation steps
-            maxIterPerStep: maximum iterations per step
-            threshold: accuracy threshold
-        Return: \\
-            Vector of x_refs
-        """
-        # TODO add your code here
-        # Hint: return a numpy array which includes the reference angular
-        # positions for all joints after performing inverse kinematics.
-
-        # this return a dictionary 
-        curr_q = self.getJointPosition(endEffector)
-        start_eff_pos=self.getJointPosition(endEffector)
-        traj = np.array(curr_q)
-        for i in interpolationSteps:
-            curr_target = (i/interpolationSteps)*(targetPosition-start_eff_pos)
-            dy = curr_target-curr_q
+    def inverseKinematics(self, endEffector, targetPosition, orientation, interpolationSteps, threshold):
+        curr_jointPosition = list(self.getJointPoses(self.jointsName).values())
+        traj=np.array([curr_jointPosition])
+        y_0 = self.getJointPosition(endEffector)
+        for t in range(1,int(interpolationSteps)):
             jacobian = self.jacobianMatrix(endEffector)
-            dTheta = jacobian.dot(dy)
-            curr_q=curr_q+dTheta
-            traj.append(curr_q)
+            y_target = y_0 +(t/interpolationSteps)*(targetPosition-y_0)
+            trajj = traj[t-1]+np.array(np.linalg.pinv(jacobian).dot((y_target-y_0).T)).T
+            y_0+=y_target
+            traj = np.append(traj,trajj)
         return traj
-
 
     def move_without_PD(self, endEffector, targetPosition, speed=0.01, orientation=None,
         threshold=1e-3, maxIter=3000, debug=False, verbose=False):
@@ -197,18 +188,21 @@ class Simulation(Simulation_base):
         # iterate through joints and update joint states based on IK solver
 
         #return pltTime, pltDistance
-        traj = self.inverseKinematics(endEffector,targetPosition,orientation,interpolationSteps=maxIter*speed,maxIterPerStep=maxIter,threshold=threshold)
-        # Simulation.p.resetJointState(
-        #         self.robot, self.j   ointIds[endEffector], self.jointPoses[endEffector])
-        return np.arange(0,maxIter*speed,speed),traj
+        pltDistance = np.array([])
+        for i in range(int(maxIter*speed)):
+            traj = self.inverseKinematics(endEffector,targetPosition,orientation=orientation,interpolationSteps=maxIter*speed,threshold=threshold)
+            self.tick_without_PD(traj[int(maxIter*speed)-1],endEffector)
+            pltDistance = np.append(pltDistance,targetPosition-self.getJointPosition(endEffector))
+        return np.arange(0,maxIter*speed,speed),pltDistance
 
 
-    def tick_without_PD(self):
+    def tick_without_PD(self,pos,endEffector):
         """Ticks one step of simulation without PD control. """
         # TODO modify from here
         # Iterate through all joints and update joint states.
             # For each joint, you can use the shared variable self.jointTargetPos.
-
+        print(pos)
+        self.p.resetJointState(self.robot,self.jointIds[endEffector],pos)  
         self.p.stepSimulation()
         self.drawDebugLines()
         time.sleep(self.dt)
