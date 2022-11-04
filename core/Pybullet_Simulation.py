@@ -171,7 +171,7 @@ class Simulation(Simulation_base):
         for t in range(1,int(interpolationSteps)):
             jacobian = self.jacobianMatrix(endEffector)
             y_target = y_0 +(t/interpolationSteps)*(targetPosition-y_0)
-            trajj = traj[t-1]+np.array(np.linalg.pinv(jacobian).dot((y_target-y_0).T)).T
+            trajj = traj[t-1]+np.array(np.linalg.pinv(jacobian).dot((y_target-y_0).T))
             y_0+=y_target
             traj = np.append(traj,trajj)
         return traj
@@ -192,8 +192,8 @@ class Simulation(Simulation_base):
         for i in range(int(maxIter*speed)):
             traj = self.inverseKinematics(endEffector,targetPosition,orientation=orientation,interpolationSteps=maxIter*speed,threshold=threshold)
             self.tick_without_PD(traj[int(maxIter*speed)-1],endEffector)
-            pltDistance = np.append(pltDistance,targetPosition-self.getJointPosition(endEffector))
-        return np.arange(0,maxIter*speed,speed),pltDistance
+            pltDistance = np.append(pltDistance,np.linalg.norm(targetPosition-self.getJointPosition(endEffector)))
+        return np.arange(0,maxIter*speed,1),pltDistance
 
 
     def tick_without_PD(self,pos,endEffector):
@@ -201,7 +201,6 @@ class Simulation(Simulation_base):
         # TODO modify from here
         # Iterate through all joints and update joint states.
             # For each joint, you can use the shared variable self.jointTargetPos.
-        print(pos)
         self.p.resetJointState(self.robot,self.jointIds[endEffector],pos)  
         self.p.stepSimulation()
         self.drawDebugLines()
