@@ -104,7 +104,7 @@ class Simulation(Simulation_base):
         # TODO modify from here
         # Hint: the output should be a dictionary with joint names as keys and
         # their corresponding homogeneous transformation matrices as values.
-        for joint in self.frameTranslationFromParent:
+        for joint in self.jointsName:
             # forming transformation matrix by composing rotational matrix and translation matrix and a addition row
             p_array = [[value] for value in self.frameTranslationFromParent[joint]]
             arr = np.append(self.getJointRotationalMatrix(joint,self.getJointPos(joint)),p_array,axis=1)
@@ -122,10 +122,9 @@ class Simulation(Simulation_base):
         # and a 3x3 array for the rotation matrix
         
         transMatrix = self.getTransformationMatrices()['base_to_dummy']
-        for i in range(1,17):
-            transMatrix = transMatrix* self.getTransformationMatrices()[list(self.frameTranslationFromParent.keys())[i]]
-            if list(self.frameTranslationFromParent.keys())[i]==jointName:
-                return transMatrix[0:3:,3].T,transMatrix[0:3,0:3]
+        index = self.jointsName.index(jointName)
+        for i in range(1,index):
+            transMatrix = transMatrix* self.getTransformationMatrices()[self.jointsName[i]]
         return transMatrix[0:3:,3].T,transMatrix[0:3,0:3]
 
     def getJointPosition(self, jointName):
@@ -189,11 +188,11 @@ class Simulation(Simulation_base):
 
         #return pltTime, pltDistance
         pltDistance = np.array([])
-        for i in range(int(maxIter*speed)):
-            traj = self.inverseKinematics(endEffector,targetPosition,orientation=orientation,interpolationSteps=maxIter*speed,threshold=threshold)
-            self.tick_without_PD(traj[int(maxIter*speed)-1],endEffector)
+        for i in range(int(maxIter)):
+            traj = self.inverseKinematics(endEffector,targetPosition,orientation=orientation,interpolationSteps=maxIter,threshold=threshold)
+            self.tick_without_PD(traj[int(maxIter)-1],endEffector)
             pltDistance = np.append(pltDistance,np.linalg.norm(targetPosition-self.getJointPosition(endEffector)))
-        return np.arange(0,maxIter*speed,1),pltDistance
+        return np.arange(0,maxIter,1),pltDistance
 
 
     def tick_without_PD(self,pos,endEffector):
