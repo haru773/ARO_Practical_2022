@@ -119,12 +119,10 @@ class Simulation(Simulation_base):
         #TODO modify from here
         # Hint: return two numpy arrays, a 3x1 array for the position vector,
         # and a 3x3 array for the rotation matrix
-        
-        transMatrix = self.getTransformationMatrices()['CHEST_JOINT0']
-        index = self.joints.index(jointName)
-        print(map(lambda x : self.joints.index(x),self.functionJoints(jointName)))
-        for i in map(lambda x : self.joints.index(x),self.functionJoints(jointName)):
-            transMatrix = transMatrix* self.getTransformationMatrices()[self.joints[i]]
+        indexx = [self.joints.index(x) for x in self.functionJoints(jointName)]
+        transMatrix = np.identity(4)
+        for i in indexx[::-1]:
+            transMatrix = self.getTransformationMatrices()[self.joints[i]]*transMatrix
         return transMatrix[0:3:,3].T,transMatrix[0:3,0:3]
 
     def getJointPosition(self, jointName):
@@ -163,9 +161,10 @@ class Simulation(Simulation_base):
     def functionJoints(self,endEffector):
         index = self.joints.index(endEffector)
         if 'L' in endEffector:
-            return [self.joints[2]]+self.joints[5:index]
-        if 'R' in endEffector:
-            return [self.joints[2]]+self.joints[10:index]
+            return [self.joints[2]]+self.joints[5:index+1]
+            # return self.joints[5:index+1]
+        else: return [self.joints[2]]+self.joints[10:index+1]
+
 
     
 
@@ -176,13 +175,14 @@ class Simulation(Simulation_base):
         # curr_jointPosition = list(self.getJointPoses(self.joints[2:]).values())
         traj=np.array([curr_jointPosition])
         y_0 = self.getJointPosition(endEffector)
+        y_curr = self.getJointPosition(endEffector)
         for t in range(1,int(interpolationSteps)):
             jacobian = self.jacobianMatrix(endEffector)
             y_target = y_0 +(t/interpolationSteps)*(targetPosition-y_0)
-            trajj = traj[t-1]+np.array(np.linalg.pinv(jacobian).dot((y_target-y_0).T)).T
-            y_0+=y_target
+            trajj = traj[t-1]+np.array(np.linalg.pinv(jacobian).dot((y_target-y_curr).T)).T
+            y_curr+=y_target
             traj = np.append(traj,trajj)
-        traj = traj.reshape((10,len(self.functionJoints(endEffector))))
+        traj = traj.reshape((interpolationSteps,len(self.functionJoints(endEffector))))
         return traj
 
     def move_without_PD(self, endEffector, targetPosition, speed=0.01, orientation=None,
@@ -210,9 +210,9 @@ class Simulation(Simulation_base):
         # TODO modify from here
         # Iterate through all joints and update joint states.
             # For each joint, you can use the shared variable self.jointTargetPos.
-        index = self.joints.index(endEffector)
-        for i in map(lambda x : self.joints.index(x),self.functionJoints(endEffector)):
-            self.p.resetJointState(self.robot,self.jointIds[self.joints[i]],pos[i])  
+        index = [self.joints.index(x) for x in self.functionJoints(endEffector)]
+        for i in range(len(pos)):
+            self.p.resetJointState(self.robot,self.jointIds[self.joints[index[i]]],pos[i])  
         self.p.stepSimulation()
         self.drawDebugLines()
         time.sleep(self.dt)
