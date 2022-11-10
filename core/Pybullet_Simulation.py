@@ -95,7 +95,7 @@ class Simulation(Simulation_base):
 
         return R
 
-    def getTransformationMatrices(self):
+    def getTransformationMatrices(self ):
         """
             Returns the homogeneous transformation matrices for each joint as a dictionary of matrices.
         """
@@ -165,7 +165,8 @@ class Simulation(Simulation_base):
         if 'L' in endEffector:
             return [self.joints[2]]+self.joints[5:index+1]
             # return self.joints[5:index+1]
-        else: return [self.joints[2]]+self.joints[10:index+1]
+        elif 'R' in endEffector: return [self.joints[2]]+self.joints[11:index+1]
+        else: return self.joints[2:index+1]
 
 
     
@@ -176,13 +177,12 @@ class Simulation(Simulation_base):
         curr_jointPosition = list(map(lambda x: self.getJointPos(x, 19), self.functionJoints(endEffector)))
         traj=np.array([curr_jointPosition])
         y_0 = self.getJointPosition(endEffector)
-        print(y_0)
         y_curr = self.getJointPosition(endEffector)
         for t in range(1,int(interpolationSteps)+1):
-            jacobian = self.jacobianMatrix(endEffector,y_curr)
+            jacobian = self.jacobianMatrix(endEffector)
             y_target = y_0 +(t/interpolationSteps)*(targetPosition-y_0)
             dy = y_target-y_curr
-            dtheta =np.array(np.linalg.pinv(jacobian)@(dy).T).T
+            dtheta =(np.array(np.linalg.pinv(jacobian)@(dy).T).T).flatten()
             curr_jointPosition = curr_jointPosition+dtheta
             y_curr=y_target
             traj = np.append(traj,curr_jointPosition)
@@ -204,11 +204,12 @@ class Simulation(Simulation_base):
 
         #return pltTime, pltDistance
         pltDistance = np.array([])
-        traj = self.inverseKinematics(endEffector,targetPosition,orientation=orientation,interpolationSteps=maxIter,threshold=threshold)
-        for i in range(int(maxIter)):
-            self.tick_without_PD(traj[i],endEffector)
-            pltDistance = np.append(pltDistance,np.linalg.norm(targetPosition-self.getJointPosition(endEffector)))
         print(self.getJointPosition(endEffector))
+        traj = self.inverseKinematics(endEffector,targetPosition,orientation=orientation,interpolationSteps=maxIter,threshold=threshold)
+        for i in range(1,int(maxIter)+1):
+            self.tick_without_PD(traj[i],endEffector)
+            print(self.getJointPosition(endEffector))
+            pltDistance = np.append(pltDistance,np.linalg.norm(targetPosition-self.getJointPosition(endEffector)))
         return np.arange(0,maxIter,1),pltDistance
 
 
@@ -381,3 +382,4 @@ class Simulation(Simulation_base):
         pass
 
  ### END
+
