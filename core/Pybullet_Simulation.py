@@ -295,7 +295,7 @@ class Simulation(Simulation_base):
 
         targetPosition, targetVelocity = float(targetPosition), float(targetVelocity)
         xreal = float(self.getJointPos(joint))
-        xreal1 = float(self.getJointPos(joint))
+        xreal1 = 0
         # print(dxreal)
         # disable joint velocity controller before apply a torque
         self.disableVelocityController(joint)
@@ -315,7 +315,7 @@ class Simulation(Simulation_base):
         pltTorqueTime = np.arange(0, steps, 1)
         return pltTime, pltTarget, pltTorque, pltTorqueTime, pltPosition, pltVelocity
 
-    def move_with_PD(self, endEffector, targetPosition, targetVel, speed=0.01, orientation=None,
+    def move_with_PD(self, endEffector, targetPosition, speed=0.01, orientation=None,
                      threshold=1e-3, maxIter=3000, debug=False, verbose=False):
         """
         Move joints using inverse kinematics solver and using PD control.
