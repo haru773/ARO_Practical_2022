@@ -91,7 +91,6 @@ class Simulation(Simulation_base):
         Rx= np.matrix([[1,0,0],[0,math.cos(theta),-math.sin(theta)],[0,math.sin(theta),math.cos(theta)]])
         Ry=np.matrix([[math.cos(theta),0,math.sin(theta)],[0,1,0],[-math.sin(theta),0,math.cos(theta)]])
         Rz=np.matrix([[math.cos(theta),-math.sin(theta),0],[math.sin(theta),math.cos(theta),0],[0,0,1]])
-        # R= Rz@(Ry@(Rx))
         
         axis = self.jointRotationAxis[jointName]
         if np.array_equal(axis, np.array([0, 0, 1])): return Rz
@@ -133,6 +132,22 @@ class Simulation(Simulation_base):
         """Get the position of a joint in the world frame, leave this unchanged please."""
         return self.getJointLocationAndOrientation(jointName)[0]
 
+    def getJointPositions(self,endEffector,angles):
+        transformationMatrices = []
+        joints = self.functionJoints(endEffector)
+        for i in range(len(angles)):
+            p_array = [[value] for value in self.frameTranslationFromParent[joints[i]]]
+            arr = np.append(self.getJointRotationalMatrix(joints[i],angles[i]),p_array,axis=1)
+            matrix=np.append(arr,[[0,0,0,1]],axis=0)
+            transformationMatrices.append(matrix)
+        transMatrix = [[1,0,0,0],[0,1,0,0],[0,0,1,0.85],[0,0,0,1]]
+        positions = []
+        for i in range(len(transformationMatrices)):
+            transMatrix =transMatrix*transformationMatrices[i]
+            positions.append(transMatrix[0:3,3].T)
+        return positions
+
+
     def getJointOrientation(self, jointName, ref=None):
         """Get the orientation of a joint in the world frame, leave this unchanged please."""
         if ref is None:
@@ -144,7 +159,7 @@ class Simulation(Simulation_base):
         """Get the orientation of a joint in the world frame, leave this unchanged please."""
         return np.array(self.getJointLocationAndOrientation(jointName)[1] @ self.jointRotationAxis[jointName]).squeeze()
 
-    def jacobianMatrix(self, endEffector,pos=None):
+    def jacobianMatrix(self, endEffector,pos=None,jointsPosition=None):
         """Calculate the Jacobian Matrix for the Nextage Robot."""
         # TODO modify from here
         # You can implement the cross product yourself or use calculateJacobian().
@@ -156,10 +171,14 @@ class Simulation(Simulation_base):
         jacobianMatrix = np.array([])
         if pos is None:
             pos = self.getJointPosition(endEffector)
-        for joint in self.functionJoints(endEffector):
-            # compute [a_n x (p_eff-p_n)] of each joint     
-            jacobianMatrix = np.append(jacobianMatrix,np.array(np.cross(self.jointRotationAxis[joint],(pos-self.getJointPosition(joint)))).T)
-        # print(jacobianMatrix)
+        if jointsPosition is None:
+            for joint in self.functionJoints(endEffector):
+                # compute [a_n x (p_eff-p_n)] of each joint     
+                jacobianMatrix = np.append(jacobianMatrix,np.array(np.cross(self.jointRotationAxis[joint],(pos-self.getJointPosition(joint)))).T)
+        else:
+            joints = self.functionJoints(endEffector)
+            for i in range(len(joints)):
+                jacobianMatrix = np.append(jacobianMatrix,np.array(np.cross(self.jointRotationAxis[joints[i]],(pos-jointsPosition[i]))).T)
         jacobianMatrix = jacobianMatrix.reshape((len(self.functionJoints(endEffector)),3))
         return jacobianMatrix.T
 
@@ -173,8 +192,6 @@ class Simulation(Simulation_base):
         else: return self.joints[2:index+1]
 
 
-    
-
     # Task 1.2 Inverse Kinematics
 
     def inverseKinematics(self, endEffector, targetPosition, orientation, interpolationSteps, threshold):
@@ -183,7 +200,7 @@ class Simulation(Simulation_base):
         y_0 = self.getJointPosition(endEffector)
         y_curr = self.getJointPosition(endEffector)
         for t in range(1,int(interpolationSteps)+1):
-            jacobian = self.jacobianMatrix(endEffector)
+            jacobian = self.jacobianMatrix(endEffector,y_curr,self.getJointPositions(endEffector,curr_jointPosition))
             y_target = y_0 +(t/interpolationSteps)*(targetPosition-y_0)
             dy = y_target-y_curr
             dtheta =(np.array(np.linalg.pinv(jacobian)@(dy).T).T).flatten()
@@ -206,15 +223,15 @@ class Simulation(Simulation_base):
         #TODO add your code here
         # iterate through joints and update joint states based on IK solver
 
-        #return pltTime, pltDistance
+        iteration = int(np.linalg.norm(targetPosition-self.getJointPosition(endEffector))*self.updateFrequency/speed)
+        iteration = max(iteration,maxIter)
         pltDistance = np.array([])
-        traj = self.inverseKinematics(endEffector,targetPosition,orientation=orientation,interpolationSteps=maxIter,threshold=threshold)
-        for i in range(1,int(maxIter)+1):
+        traj = self.inverseKinematics(endEffector,targetPosition,orientation=orientation,interpolationSteps=iteration,threshold=threshold)
+        print('start updating ')
+        for i in range(1,iteration+1):
             self.tick_without_PD(traj[i],endEffector)
-            print('new position')
-            print(self.getJointPosition(endEffector))
             pltDistance = np.append(pltDistance,np.linalg.norm(targetPosition-self.getJointPosition(endEffector)))
-        return np.arange(0,maxIter,1),pltDistance
+        return np.arange(0,iteration,1),pltDistance
 
 
     def tick_without_PD(self,pos,endEffector):
