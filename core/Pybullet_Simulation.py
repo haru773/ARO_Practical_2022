@@ -182,6 +182,13 @@ class Simulation(Simulation_base):
         jacobianMatrix = jacobianMatrix.reshape((len(self.functionJoints(endEffector)),3))
         return jacobianMatrix.T
 
+    def jacobianOrientation(self,endEffector):
+        jacobianMatrix = np.array([])
+        for joint in self.functionJoints(endEffector):  
+            jacobianMatrix = np.append(jacobianMatrix,np.array(np.cross(self.jointRotationAxis[joint],self.jointRotationAxis[endEffector])).T)
+        jacobianMatrix = jacobianMatrix.reshape((len(self.functionJoints(endEffector)),3))
+        return jacobianMatrix.T
+
     
     def functionJoints(self,endEffector):
         index = self.joints.index(endEffector)
@@ -249,6 +256,7 @@ class Simulation(Simulation_base):
 
     ########## Task 2: Dynamics ##########
     # Task 2.1 PD Controller
+
     def calculateTorque(self, x_ref, x_real, dx_ref, dx_real, integral, kp, ki, kd):
         """ This method implements the closed-loop control \\
         Arguments: \\
@@ -320,7 +328,7 @@ class Simulation(Simulation_base):
         # logging for the graph
         pltTime, pltTarget, pltTorque, pltTorqueTime, pltPosition, pltVelocity = [], [], [], [], [], []
         steps = 0
-        while abs(targetPosition - xreal) >= 0.001:
+        for i in range(1000):
             #print(abs(targetPosition - xreal))
             # print(targetPosition)
             # print(xreal)
@@ -351,16 +359,18 @@ class Simulation(Simulation_base):
         # all IK iterations (optional).
 
         # return pltTime, pltDistance
-
+        iteration = int(
+            np.linalg.norm(targetPosition - self.getJointPosition(endEffector)) * self.updateFrequency / speed)
+        iteration = max(iteration, maxIter)
         pltDistance = np.array([])
         traj = self.inverseKinematics(endEffector, targetPosition, orientation=orientation,
-                                      interpolationSteps=maxIter,
+                                      interpolationSteps=iteration,
                                       threshold=threshold)
         xreal_prev = [0] * len(traj[0])
-        for i in range(1, int(maxIter) + 1):
+        for i in range(1, iteration + 1):
             xreal_prev = self.tick(traj[i], endEffector, xreal_prev)
             pltDistance = np.append(pltDistance, np.linalg.norm(targetPosition - self.getJointPosition(endEffector)))
-        return np.arange(0, maxIter, 1), pltDistance
+        return np.arange(0, iteration, 1), pltDistance
 
     def tick(self, pos, endEffector, xreal_prev,integral=0):
         """Ticks one step of simulation using PD control."""
@@ -390,7 +400,7 @@ class Simulation(Simulation_base):
             xreal = float(self.getJointPos(joint))
             #print(xreal)
             #calc velocity
-            dxreal = (xreal - xreal_prev[i]) *1000
+            dxreal = (xreal - xreal_prev[i]) * 1000
             #update prev velocity lst
             xreal_prev[i] = xreal
 
@@ -422,7 +432,6 @@ class Simulation(Simulation_base):
         self.drawDebugLines()
         time.sleep(self.dt)
         return xreal_prev
-
 
     ########## Task 3: Robot Manipulation ##########
     def cubic_interpolation(self, points, nTimes=100):
