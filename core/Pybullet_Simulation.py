@@ -73,6 +73,8 @@ class Simulation(Simulation_base):
         # 'RHAND'      : np.array([0, 0, 0]), # optional
         # 'LHAND'      : np.array([0, 0, 0]) # optional
     }
+    chestMovement =0
+    arm0Movement=0
 
 
     def getJointRotationalMatrix(self, jointName=None, theta=None):
@@ -193,7 +195,8 @@ class Simulation(Simulation_base):
     def functionJoints(self,endEffector):
         index = self.joints.index(endEffector)
         if 'L' in endEffector:
-            return [self.joints[2]]+self.joints[5:index+1]
+            # return [self.joints[2]]+self.joints[5:index+1]
+            return [self.joints[2]]+self.joints[5:index]
             # return self.joints[5:index+1]
         elif 'R' in endEffector: return [self.joints[2]]+self.joints[11:index+1]
         else: return self.joints[2:index+1]
@@ -237,7 +240,12 @@ class Simulation(Simulation_base):
         print('start updating ')
         for i in range(1,iteration+1):
             self.tick_without_PD(traj[i],endEffector)
+            self.chestMovement= self.chestMovement+traj[i][0]
+            self.arm0Movement=self.arm0Movement+traj[i][1]
             pltDistance = np.append(pltDistance,np.linalg.norm(targetPosition-self.getJointPosition(endEffector)))
+        print(self.chestMovement)
+        print(self.arm0Movement)
+        print(self.getJointPosition(endEffector))
         return np.arange(0,iteration,1),pltDistance
 
 
@@ -252,7 +260,14 @@ class Simulation(Simulation_base):
         self.p.stepSimulation()
         self.drawDebugLines()
         time.sleep(self.dt)
-
+    
+    def orientationAdjust(self,endEffector):
+        self.p.resetJointState(self.robot,self.jointIds[endEffector],-(self.chestMovement+self.arm0Movement))  
+        self.arm0Movement=0
+        self.chestMovement=0
+        self.p.stepSimulation()
+        self.drawDebugLines()
+        time.sleep(self.dt)
 
     ########## Task 2: Dynamics ##########
     # Task 2.1 PD Controller
@@ -460,5 +475,3 @@ class Simulation(Simulation_base):
         """A template function for you, you are free to use anything else"""
         # TODO: Append your code here
         pass
-
- ### END
