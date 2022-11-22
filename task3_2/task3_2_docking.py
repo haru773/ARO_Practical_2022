@@ -93,12 +93,12 @@ def getReadyForTask():
     )
    # traj = sim.inverseKinematics('LARM_JOINT5', [0.35,0.275, 1.1], orientation=None,interpolationSteps = 300, threshold=None,)
     #xreal_prev = [0] * len(traj[0])
-    for _ in range(300):
+   # for _ in range(300):
         #sim.chestMovement = sim.chestMovement + traj[_][0]
         #sim.arm0Movement = sim.arm0Movement + traj[_][1]
     #    for i in range(20):
      #       xreal_prev = sim.tick(traj[_], 'LARM_JOINT5', xreal_prev)
-        time.sleep(1./1000)
+    #    time.sleep(1./1000)
 
     return tableId, cubeId, targetId
 
@@ -114,10 +114,10 @@ def solution():
     sim.move_without_PD(endEffector2, [0.6, 0, 1.05], speed=.2, orientation=None,
                         threshold=1e-3, maxIter=10, debug=False, verbose=False)
 
-    sim.move_without_PD(endEffector1, [0.35, .38, 1.05], speed=0.2, orientation=None,
+    sim.move_without_PD(endEffector1, [0.28, .38, 1.1], speed=0.2, orientation=None,
                   threshold=1e-3, maxIter=10, debug=False, verbose=False)
 
-    sim.move_without_PD(endEffector2, [0.38, -0.2, 1.05], speed=0.2, orientation=None,
+    sim.move_without_PD(endEffector2, [0.35, .38, 1.1], speed=0.2, orientation=None,
                         threshold=1e-3, maxIter=10, debug=False, verbose=False)
 
     while True:
