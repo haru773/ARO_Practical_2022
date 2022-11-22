@@ -113,13 +113,12 @@ def solution():
 
     sim.move_without_PD(endEffector2, [0.6, 0, 1.05], speed=.2, orientation=None,
                         threshold=1e-3, maxIter=10, debug=False, verbose=False)
-
-    sim.move_without_PD(endEffector1, [0.28, .38, 1.1], speed=0.2, orientation=None,
-                  threshold=1e-3, maxIter=10, debug=False, verbose=False)
-
-    sim.move_without_PD(endEffector2, [0.35, .38, 1.1], speed=0.2, orientation=None,
+    sim.move_without_PD(endEffector1, [0.28, .45, 1.1], speed=0.2, orientation=None,
+        threshold=1e-3, maxIter=10, debug=False, verbose=False)
+    sim.move_without_PD(endEffector2, [0.35, .281, 1.1], speed=0.12, orientation=None,
                         threshold=1e-3, maxIter=10, debug=False, verbose=False)
-
+ 
+      
     while True:
       pass
 
