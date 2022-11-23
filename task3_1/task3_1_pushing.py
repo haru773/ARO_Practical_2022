@@ -90,16 +90,22 @@ def getReadyForTask():
 
 
 def solution():
+    # finalTargetPos = np.array([0.7, 0.00, 0.91])
+    # cubePosition = np.array([0.33, 0, 1.0])
+    # # table = [0.8, 0, 0]
+    # endEffector1 = 'LARM_JOINT5'
+    # endEffector2 = 'RARM_JOINT5'
+  
+    # sim.move_without_PD(endEffector1, [0.18, 0.23, 1.05], speed=0.5,orientation=None, threshold=1e-3, maxIter=100, debug=False, verbose=False)
+    # sim.move_without_PD(endEffector1, [0.18, 0, 1.05], speed=0.5,orientation=None, threshold=1e-3, maxIter=100, debug=False, verbose=False)
+    # sim.orientationAdjust(endEffector1)
+    # sim.move_without_PD(endEffector1, [0.7, 0.00, 0.91], speed=0.5,orientation=None, threshold=1e-3, maxIter=100, debug=False, verbose=False)
+    
     finalTargetPos = np.array([0.7, 0.00, 0.91])
     cubePosition = np.array([0.33, 0, 1.0])
     # table = [0.8, 0, 0]
     endEffector1 = 'LARM_JOINT5'
     endEffector2 = 'RARM_JOINT5'
-  
-    sim.move_without_PD(endEffector1, [0.18, 0.23, 1.05], speed=0.5,orientation=None, threshold=1e-3, maxIter=100, debug=False, verbose=False)
-    sim.move_without_PD(endEffector1, [0.18, 0, 1.05], speed=0.5,orientation=None, threshold=1e-3, maxIter=100, debug=False, verbose=False)
-    sim.orientationAdjust(endEffector1)
-    sim.move_without_PD(endEffector1, [0.7, 0.00, 0.91], speed=0.5,orientation=None, threshold=1e-3, maxIter=100, debug=False, verbose=False)
-    
+    sim.moveEndEffectorToPosition(endEffector1, [0.18, 0.23, 1.05], [0.18, -0.01, 1.05], [0.75, .55, 1.12], spd1=0.5,spd2=0.5,spd3=1)
 tableId, cubeId, targetId = getReadyForTask()
 solution()
