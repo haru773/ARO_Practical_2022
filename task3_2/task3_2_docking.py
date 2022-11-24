@@ -103,24 +103,30 @@ def getReadyForTask():
     return tableId, cubeId, targetId
 
 
-def solution():
+def solution(cubeId):
+    sim.disableRobotCollisions()
+    sim.disableRobotBallCollision(cubeId)
     endEffector1 = 'LARM_JOINT5'
     endEffector2 = 'RARM_JOINT5'
 
-    sim.move_without_PD(endEffector1, [0.45, 0, 1.1], speed=0.1, orientation=None,
+    sim.move_without_PD(endEffector1, [0.45, 0.15, 1.22], speed=0.5, orientation=None,
                         threshold=1e-3, maxIter=10, debug=False, verbose=False)
-    sim.orientationAdjust(endEffector2)
+    sim.orientationAdjust(endEffector1)
 
-    sim.move_without_PD(endEffector2, [0.6, 0, 1.05], speed=.2, orientation=None,
+    sim.move_without_PD(endEffector2, [0.45, -0.12, 1.2], speed=.4, orientation=None,
                         threshold=1e-3, maxIter=10, debug=False, verbose=False)
-    sim.move_without_PD(endEffector1, [0.28, .45, 1.1], speed=0.2, orientation=None,
-        threshold=1e-3, maxIter=10, debug=False, verbose=False)
-    sim.move_without_PD(endEffector2, [0.35, .281, 1.1], speed=0.12, orientation=None,
+    sim.orientationAdjust(endEffector2,1)
+    sim.move_without_PD(endEffector1, [0.45, 0.15, 1.22], speed=0.5, orientation=None,
                         threshold=1e-3, maxIter=10, debug=False, verbose=False)
+    sim.move_without_PD(endEffector2, [0.45, -0.12, 1.25], speed=0.5, orientation=None,
+                        threshold=1e-3, maxIter=10, debug=False, verbose=False)
+    sim.move_without_PD(endEffector1, [0.45, 0.15, 1.25], speed=0.5, orientation=None,
+                        threshold=1e-3, maxIter=10, debug=False, verbose=False)
+   
+    sim.move_without_PD(endEffector2, [0.35, .35, 1.25], speed=0.5, orientation=None,
+                 threshold=1e-3, maxIter=10, debug=False, verbose=False)
  
-      
-    while True:
-      pass
+
 
 tableId, cubeId, targetId = getReadyForTask()
-solution()
+solution(cubeId)
